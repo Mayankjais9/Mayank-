@@ -1,0 +1,47 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+import urllib.parse
+import time
+
+def google_search(company_name):
+    query = f'site:linkedin.com "{company_name}"'
+    search_url = f"https://www.google.com/search?q={urllib.parse.quote_plus(query)}"
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+    response = requests.get(search_url, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+    links = []
+
+    for a in soup.select("a"):
+        href = a.get("href")
+        if href and "linkedin.com" in href and "/url?q=" in href:
+            clean_link = href.split("/url?q=")[1].split("&")[0]
+            links.append(clean_link)
+    return list(dict.fromkeys(links))[:5]  # Return top 5 unique links
+
+def main():
+    file_path = input("Enter path to your Excel file (e.g., company_list.xlsx): ")
+    df = pd.read_excel(file_path)
+
+    output_data = []
+
+    for index, row in df.iterrows():
+        company = str(row['Company Name'])
+        print(f"Searching for: {company}")
+        links = google_search(company)
+        output_data.append({
+            "Company Name": company,
+            "LinkedIn Link 1": links[0] if len(links) > 0 else '',
+            "LinkedIn Link 2": links[1] if len(links) > 1 else '',
+            "LinkedIn Link 3": links[2] if len(links) > 2 else ''
+        })
+        time.sleep(2)  # prevent temporary blocks
+
+    result_df = pd.DataFrame(output_data)
+    result_df.to_excel("LinkedIn_Results.xlsx", index=False)
+    print("✅ Done. Results saved to LinkedIn_Results.xlsx")
+
+if __name__ == "__main__":
+    main()
